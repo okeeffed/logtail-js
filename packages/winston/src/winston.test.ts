@@ -1,6 +1,6 @@
 import winston, { LogEntry } from "winston";
 import { Logtail } from "@logtail/node";
-import { LogLevel, ILogtailLog } from "@logtail/types";
+import { LogLevel, ILogtailLog, Context } from "@logtail/types";
 
 import { LogtailTransport } from "./winston";
 
@@ -16,13 +16,13 @@ async function testLevel(level: string, logLevel: LogLevel) {
   // Sample log
   const log: LogEntry = {
     level,
-    message
+    message,
   };
 
   // Logtail fixtures
   const logtail = new Logtail("test");
-  const logged = new Promise<ILogtailLog[]>(resolve => {
-    logtail.setSync(async logs => {
+  const logged = new Promise<ILogtailLog[]>((resolve) => {
+    logtail.setSync(async (logs) => {
       resolve(logs);
       return logs;
     });
@@ -31,7 +31,7 @@ async function testLevel(level: string, logLevel: LogLevel) {
   // Create a Winston logger
   const logger = winston.createLogger({
     level,
-    transports: [new LogtailTransport(logtail)]
+    transports: [new LogtailTransport(logtail)],
   });
 
   // Log it!
@@ -47,6 +47,10 @@ async function testLevel(level: string, logLevel: LogLevel) {
 
   // Log level should be 'info'
   expect(logs[0].level).toBe(logLevel);
+
+  expect(((logs[0].context as Context).runtime as Context).file).toBe(
+    "winston.test.ts"
+  );
 }
 
 describe("Winston logging tests", () => {
@@ -70,40 +74,40 @@ describe("Winston logging tests", () => {
     return testLevel("silly", LogLevel.Info);
   });
 
-  it("should sync multiple logs", async done => {
+  it("should sync multiple logs", async (done) => {
     // Create multiple log entries
     const entries: LogEntry[] = [
       {
         level: "info",
-        message: `${message} 1`
+        message: `${message} 1`,
       },
       {
         level: "debug",
-        message: `${message} 2`
+        message: `${message} 2`,
       },
       {
         level: "warn",
-        message: `${message} 3`
+        message: `${message} 3`,
       },
       {
         level: "error",
-        message: `${message} 4`
-      }
+        message: `${message} 4`,
+      },
     ];
 
     // Fixtures
     const logtail = new Logtail("test", {
       batchInterval: 1000, // <-- shouldn't be exceeded
-      batchSize: entries.length
+      batchSize: entries.length,
     });
 
-    logtail.setSync(async logs => {
+    logtail.setSync(async (logs) => {
       expect(logs.length).toBe(entries.length);
 
       // Logs should be identical
       const isIdentical = logs.every(
-        log =>
-          entries.findIndex(entry => {
+        (log) =>
+          entries.findIndex((entry) => {
             return entry.message == log.message;
           }) > -1
       );
@@ -118,16 +122,16 @@ describe("Winston logging tests", () => {
     // Create a Winston logger
     const logger = winston.createLogger({
       level: "debug", // <-- debug and above
-      transports: [new LogtailTransport(logtail)]
+      transports: [new LogtailTransport(logtail)],
     });
 
-    entries.forEach(entry => logger.log(entry.level, entry.message));
+    entries.forEach((entry) => logger.log(entry.level, entry.message));
   });
 
   it("should log metadata with the message and level", async () => {
     const logtail = new Logtail("test");
-    const logged = new Promise<ILogtailLog[]>(resolve => {
-      logtail.setSync(async logs => {
+    const logged = new Promise<ILogtailLog[]>((resolve) => {
+      logtail.setSync(async (logs) => {
         resolve(logs);
         return logs;
       });
@@ -136,7 +140,7 @@ describe("Winston logging tests", () => {
     // Create a Winston logger
     const logger = winston.createLogger({
       level: LogLevel.Info,
-      transports: [new LogtailTransport(logtail)]
+      transports: [new LogtailTransport(logtail)],
     });
 
     // Log it!
@@ -158,8 +162,8 @@ describe("Winston logging tests", () => {
 
   it("should log defaultMetadata with the message and level", async () => {
     const logtail = new Logtail("test");
-    const logged = new Promise<ILogtailLog[]>(resolve => {
-      logtail.setSync(async logs => {
+    const logged = new Promise<ILogtailLog[]>((resolve) => {
+      logtail.setSync(async (logs) => {
         resolve(logs);
         return logs;
       });
@@ -170,8 +174,8 @@ describe("Winston logging tests", () => {
       level: LogLevel.Info,
       transports: [new LogtailTransport(logtail)],
       defaultMeta: {
-        component: "server"
-      }
+        component: "server",
+      },
     });
 
     // Log it!
