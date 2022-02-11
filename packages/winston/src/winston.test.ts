@@ -48,6 +48,7 @@ async function testLevel(level: string, logLevel: LogLevel) {
   // Log level should be 'info'
   expect(logs[0].level).toBe(logLevel);
 
+  // Log runtime value should be set to which file called the logging function
   expect(((logs[0].context as Context).runtime as Context).file).toBe(
     "winston.test.ts"
   );
