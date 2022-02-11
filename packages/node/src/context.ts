@@ -1,6 +1,6 @@
 import { Context } from "@logtail/types";
 import { dirname, relative } from "path";
-import stackTrace, { StackFrame } from 'stack-trace';
+import stackTrace, { StackFrame } from "stack-trace";
 import { Node } from "./node";
 
 /**
@@ -25,23 +25,51 @@ export function getStackContext(logtail: Node): Context {
       },
       system: {
         pid: process.pid,
-        main_file: mainFileName()
-      }
-    }
+        main_file: mainFileName(),
+      },
+    },
   };
 }
 
 function getCallingFrame(logtail: Node): StackFrame | null {
+  // const supportedFnNames = ["warn", "error", "info", "log"];
+
   for (let fn of [logtail.warn, logtail.error, logtail.info, logtail.log]) {
     const stack = stackTrace.get(fn as any);
-    if (stack.length > 0) return stack[0];
+
+    const frames = stack.map((frame) => ({
+      fileName: frame.getFileName(),
+      lineNumber: frame.getLineNumber(),
+      columnNumber: frame.getColumnNumber(),
+      methodName: frame.getMethodName(),
+      functionName: frame.getFunctionName(),
+      typeName: frame.getTypeName(),
+    }));
+
+    if (stack.length > 0) {
+      // We check through the stack to find the first instance of `Object`
+      // which equals our Logtail object and expected logging function invocation.
+      const logInvocationIndex = stack.findIndex(
+        (frame) => frame.getTypeName() === "Object"
+      );
+
+      // If we do not find the expected function invocation, we default to the
+      // prior behaviour of returning the first frame in the stack. Otherwise,
+      // we return the frame that invoked the logging function.
+      if (logInvocationIndex !== -1) {
+        console.log(stack[logInvocationIndex].getLineNumber());
+        return stack[logInvocationIndex];
+      }
+
+      return stack[0];
+    }
   }
 
   return null;
 }
 
 function relativeToMainModule(fileName: string): string | null {
-  if (typeof(fileName) !== "string") {
+  if (typeof fileName !== "string") {
     return null;
   } else if (fileName.startsWith("file:/")) {
     const url = new URL(fileName);
@@ -53,5 +81,5 @@ function relativeToMainModule(fileName: string): string | null {
 }
 
 function mainFileName(): string {
-  return require?.main?.filename ?? '';
+  return require?.main?.filename ?? "";
 }
